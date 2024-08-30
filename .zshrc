@@ -122,3 +122,55 @@ clonrepo() {
   git clone git@github.com:SaganGromov/$1.git
 }
 
+copiar() {
+    if [[ "$1" == "-a" ]]; then
+        shift
+        cp "$@"
+    elif [[ "$1" == "-p" ]]; then
+        shift
+        cp -r "$@"
+    else
+        echo "Opção desconhecida!"
+    fi
+}
+
+mover() {
+    if [[ "$1" == "-a" ]]; then
+        shift
+        mv "$@"
+    elif [[ "$1" == "-p" ]]; then
+        shift
+        mv "$@"
+    else
+        echo "Opção desconhecida!"
+    fi
+}
+
+
+encontrar() {
+    if [[ "$1" == "-a" ]]; then
+        shift
+        find . -iname "$@"
+    elif [[ "$1" == "-p" ]]; then
+        shift
+        find . -type d -iname "$@"
+    else
+        echo "Opção desconhecida!"
+    fi
+}
+
+encontrar_fuzzy() {
+    if [[ "$1" == "-a" ]]; then
+        shift
+        find . -iname "*" | fzf --filter="$@"
+    elif [[ "$1" == "-p" ]]; then
+        shift
+        find . -type d -iname "*" | fzf --filter="$@"
+    else
+        echo "Opção desconhecida: $1"
+    fi
+}
+
+
+
+
