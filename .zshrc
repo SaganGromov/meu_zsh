@@ -522,3 +522,28 @@ deleteRepo() {
   fi
 }
 
+
+acessar_repo() {
+  # Get the current directory name
+  local repo_name
+  repo_name=$(basename "$PWD")
+
+  # GitHub URL
+  local url="https://github.com/SaganGromov/$repo_name"
+
+  # Check if Google Chrome is installed
+  if ! command -v google-chrome &> /dev/null; then
+    echo "Erro: Google Chrome não está instalado ou não está no PATH."
+    return 1
+  fi
+
+  # Check for --nova-janela option
+  if [[ "$1" == "--nova-janela" ]]; then
+    google-chrome --new-window "$url"
+  else
+    google-chrome "$url"
+  fi
+}
+
+
+
