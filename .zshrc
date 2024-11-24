@@ -453,24 +453,42 @@ deletarRepoAtual() {
 }
 
 
-
 BaixarVideo() {
-  # Check if the URL is provided
   if [ -z "$1" ]; then
     echo "Erro: Você precisa fornecer a URL do vídeo."
     return 1
   fi
 
-  # Initialize variables
-  URL="$1"
-  REMOVE_SPONSORS=false
+  # Get the video URL
+  local URL="$1"
+  local REMOVE_SPONSORS=false
+  local DOWNLOAD_PATH="."
 
-  # Check for the --sem-patrocinadores flag
-  if [ "$2" == "--sem-patrocinadores" ]; then
-    REMOVE_SPONSORS=true
+  # Parse additional options
+  for arg in "$@"; do
+    if [[ "$arg" == "--sem-patrocinadores" ]]; then
+      REMOVE_SPONSORS=true
+    elif [[ "$arg" == --path=* ]]; then
+      DOWNLOAD_PATH="${arg#--path=}"
+    fi
+  done
+
+  # Check if the directory exists, and prompt to create it if not
+  if [ ! -d "$DOWNLOAD_PATH" ]; then
+    echo "O caminho '$DOWNLOAD_PATH' não existe."
+    echo -n "Deseja criá-lo? (sim/não): "
+    read CONFIRMATION
+    if [[ "$CONFIRMATION" == "sim" ]]; then
+      mkdir -p "$DOWNLOAD_PATH"
+      echo "Diretório '$DOWNLOAD_PATH' criado com sucesso."
+    else
+      echo "Ação cancelada. O download não será realizado."
+      return 1
+    fi
   fi
 
   # Get video title
+  local TITLE
   TITLE=$(yt-dlp --get-title "$URL" 2>/dev/null)
 
   if [ -z "$TITLE" ]; then
@@ -478,20 +496,18 @@ BaixarVideo() {
     return 1
   fi
 
-  # Construct the yt-dlp command
-  CMD="yt-dlp -f bestvideo[height=1080]+bestaudio"
-
-  # Add SponsorBlock option if flag is set
-  if [ "$REMOVE_SPONSORS" = true ]; then
-    CMD+=" --sponsorblock-remove all"
-    echo "Baixando vídeo \"$TITLE\" em 1080p sem patrocinadores..."
+  # Output appropriate message
+  if $REMOVE_SPONSORS; then
+    echo "Baixando vídeo \"$TITLE\" em 1080p sem patrocinadores para o diretório '$DOWNLOAD_PATH'..."
+    yt-dlp -f "bestvideo[height=1080]+bestaudio" --sponsorblock-remove all -P "$DOWNLOAD_PATH" "$URL"
   else
-    echo "Baixando vídeo \"$TITLE\" em 1080p com patrocinadores..."
+    echo "Baixando vídeo \"$TITLE\" em 1080p com patrocinadores para o diretório '$DOWNLOAD_PATH'..."
+    yt-dlp -f "bestvideo[height=1080]+bestaudio" -P "$DOWNLOAD_PATH" "$URL"
   fi
-
-  # Execute the command
-  $CMD "$URL"
 }
+
+
+
 
 deleteRepo() {
   if [ -z "$1" ]; then
@@ -522,7 +538,6 @@ deleteRepo() {
   fi
 }
 
-
 acessar_repo() {
   # Get the current directory name
   local repo_name
@@ -544,6 +559,5 @@ acessar_repo() {
     google-chrome "$url"
   fi
 }
-
 
 
