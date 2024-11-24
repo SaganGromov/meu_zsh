@@ -159,29 +159,6 @@ mover() {
 }
 
 
-encontrar() {
-    if [[ "$1" == "-a" ]]; then
-        shift
-        find . -iname "$@"
-    elif [[ "$1" == "-p" ]]; then
-        shift
-        find . -type d -iname "$@"
-    else
-        echo "Opção desconhecida!"
-    fi
-}
-
-encontrar_fuzzy() {
-    if [[ "$1" == "-a" ]]; then
-        shift
-        find . -iname "*" | fzf --filter="$@"
-    elif [[ "$1" == "-p" ]]; then
-        shift
-        find . -type d -iname "*" | fzf --filter="$@"
-    else
-        echo "Opção desconhecida: $1"
-    fi
-}
 
 alias ajuda_venv='~/scripts/ajuda_venv.sh'
 alias verHistorico='vim ~/.zsh_history'
@@ -388,23 +365,37 @@ _fzf_compgen_dir() {
   fd --type=d --hidden --exclude .git . "$1"
 }
 
-export FZF_CTRL_T_OPTS="--preview 'bat -n --color=always --line-range :500 {}'"
-export FZF_ALT_C_OPTS="--preview 'eza --tree --color=always {} | head -200'"
+
+# Define a preview command that works correctly
+preview_cmd="\
+if [ -d {} ]; then \
+  eza --tree --color=always {} | head -200; \
+elif [[ {} =~ \.(md|txt|py|java|tex|sh|c|cpp|log)$ ]]; then \
+  bat -n --color=always --line-range :500 {}; \
+else \
+  echo 'No preview available for this file type.'; \
+fi"
+
+# Ensure correct quoting and escaping for the preview option
+export FZF_CTRL_T_OPTS="--preview=\"$preview_cmd\" --preview-window=right:60%:wrap"
+export FZF_ALT_C_OPTS="--preview=\"eza --tree --color=always {} | head -200\" --preview-window=right:60%:wrap"
 
 # Advanced customization of fzf options via _fzf_comprun function
-# - The first argument to the function is the name of the command.
-# - You should make sure to pass the rest of the arguments to fzf.
 _fzf_comprun() {
   local command=$1
   shift
 
   case "$command" in
-    cd)           fzf --preview 'eza --tree --color=always {} | head -200' "$@" ;;
-    export|unset) fzf --preview "eval 'echo $'{}"         "$@" ;;
-    ssh)          fzf --preview 'dig {}'                   "$@" ;;
-    *)            fzf --preview "bat -n --color=always --line-range :500 {}" "$@" ;;
+    cd)           fzf --preview="eza --tree --color=always {} | head -200" --preview-window=right:60%:wrap "$@" ;;
+    export|unset) fzf --preview="eval 'echo ${}'" --preview-window=wrap "$@" ;;
+    ssh)          fzf --preview="dig {}" --preview-window=wrap "$@" ;;
+    *)            fzf --preview="$preview_cmd" --preview-window=right:60%:wrap "$@" ;;
   esac
 }
+
+
+
+
 
 bindkey -s "^G" ""
 source ~/fzf-git.sh/fzf-git.sh
@@ -451,62 +442,6 @@ deletarRepoAtual() {
         echo "Operation canceled. Repository '$repo_name' was not deleted."
     fi
 }
-
-
-BaixarVideo() {
-  if [ -z "$1" ]; then
-    echo "Erro: Você precisa fornecer a URL do vídeo."
-    return 1
-  fi
-
-  # Get the video URL
-  local URL="$1"
-  local REMOVE_SPONSORS=false
-  local DOWNLOAD_PATH="."
-
-  # Parse additional options
-  for arg in "$@"; do
-    if [[ "$arg" == "--sem-patrocinadores" ]]; then
-      REMOVE_SPONSORS=true
-    elif [[ "$arg" == --path=* ]]; then
-      DOWNLOAD_PATH="${arg#--path=}"
-    fi
-  done
-
-  # Check if the directory exists, and prompt to create it if not
-  if [ ! -d "$DOWNLOAD_PATH" ]; then
-    echo "O caminho '$DOWNLOAD_PATH' não existe."
-    echo -n "Deseja criá-lo? (sim/não): "
-    read CONFIRMATION
-    if [[ "$CONFIRMATION" == "sim" ]]; then
-      mkdir -p "$DOWNLOAD_PATH"
-      echo "Diretório '$DOWNLOAD_PATH' criado com sucesso."
-    else
-      echo "Ação cancelada. O download não será realizado."
-      return 1
-    fi
-  fi
-
-  # Get video title
-  local TITLE
-  TITLE=$(yt-dlp --get-title "$URL" 2>/dev/null)
-
-  if [ -z "$TITLE" ]; then
-    echo "Erro: Não foi possível obter o título do vídeo. Verifique a URL."
-    return 1
-  fi
-
-  # Output appropriate message
-  if $REMOVE_SPONSORS; then
-    echo "Baixando vídeo \"$TITLE\" em 1080p sem patrocinadores para o diretório '$DOWNLOAD_PATH'..."
-    yt-dlp -f "bestvideo[height=1080]+bestaudio" --sponsorblock-remove all -P "$DOWNLOAD_PATH" "$URL"
-  else
-    echo "Baixando vídeo \"$TITLE\" em 1080p com patrocinadores para o diretório '$DOWNLOAD_PATH'..."
-    yt-dlp -f "bestvideo[height=1080]+bestaudio" -P "$DOWNLOAD_PATH" "$URL"
-  fi
-}
-
-
 
 
 deleteRepo() {
@@ -560,4 +495,59 @@ acessar_repo() {
   fi
 }
 
+BaixarVideo() {
+  if [ -z "$1" ]; then
+    echo "Erro: Você precisa fornecer a URL do vídeo."
+    return 1
+  fi
+
+  # Get the video URL
+  local URL="$1"
+  local REMOVE_SPONSORS=false
+  local DOWNLOAD_PATH="."
+
+  # Parse additional options
+  for arg in "$@"; do
+    if [[ "$arg" == "--sem-patrocinadores" ]]; then
+      REMOVE_SPONSORS=true
+    elif [[ "$arg" == --path=* ]]; then
+      DOWNLOAD_PATH="${arg#--path=}"
+    fi
+  done
+
+  # Check if the directory exists, and prompt to create it if not
+  if [ ! -d "$DOWNLOAD_PATH" ]; then
+    echo "O caminho '$DOWNLOAD_PATH' não existe."
+    echo -n "Deseja criá-lo? (sim/não): "
+    read CONFIRMATION
+    if [[ "$CONFIRMATION" == "sim" ]]; then
+      mkdir -p "$DOWNLOAD_PATH"
+      echo "Diretório '$DOWNLOAD_PATH' criado com sucesso."
+    else
+      echo "Ação cancelada. O download não será realizado."
+      return 1
+    fi
+  fi
+
+  # Get video title
+  local TITLE
+  TITLE=$(yt-dlp --get-title "$URL" 2>/dev/null)
+
+  if [ -z "$TITLE" ]; then
+    echo "Erro: Não foi possível obter o título do vídeo. Verifique a URL."
+    return 1
+  fi
+
+  # Output appropriate message
+  if $REMOVE_SPONSORS; then
+    echo "Baixando vídeo \"$TITLE\" em 1080p sem patrocinadores no formato MP4 para o diretório '$DOWNLOAD_PATH'..."
+    yt-dlp -f "bestvideo[ext=mp4][height=1080]+bestaudio[ext=m4a]" --merge-output-format mp4 --sponsorblock-remove all -P "$DOWNLOAD_PATH" "$URL"
+  else
+    echo "Baixando vídeo \"$TITLE\" em 1080p com patrocinadores no formato MP4 para o diretório '$DOWNLOAD_PATH'..."
+    yt-dlp -f "bestvideo[ext=mp4][height=1080]+bestaudio[ext=m4a]" --merge-output-format mp4 -P "$DOWNLOAD_PATH" "$URL"
+  fi
+}
+
+
+export FZF_DEFAULT_OPTS="--layout=reverse --height=40% --preview-window=wrap"
 
