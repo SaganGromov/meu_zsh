@@ -352,46 +352,58 @@ copie() {
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
 
-export FZF_DEFAULT_COMMAND="fd --hidden --strip-cwd-prefix --exclude .git"
+# export FZF_DEFAULT_COMMAND="fd --hidden --strip-cwd-prefix --exclude .git"
+export FZF_DEFAULT_COMMAND="fd --hidden --exclude .git"
 export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
 export FZF_ALT_C_COMMAND="fd --type=d --hidden --strip-cwd-prefix --exclude .git"
 
-_fzf_compgen_path() {
-  fd --hidden --exclude .git . "$1"
-}
+export FZF_DEFAULT_OPTS="--layout=reverse --height=40% --preview='
+if [ -d {} ]; then
+  ls -la {} | head -200
+elif [[ {} =~ \.(md|txt|py|java|tex|sh|c|cpp|log|json)$ ]]; then
+  bat --style=numbers --color=always --line-range :500 {}
+else
+  file_type=$(file --mime-type -b {})
+  echo \"This is a $file_type file and admits no terminal preview.\"
+fi'"
 
-# Use fd to generate the list for directory completion
-_fzf_compgen_dir() {
-  fd --type=d --hidden --exclude .git . "$1"
-}
+
+# _fzf_compgen_path() {
+#   fd --hidden --exclude .git . "$1"
+# }
+
+# # Use fd to generate the list for directory completion
+# _fzf_compgen_dir() {
+#   fd --type=d --hidden --exclude .git . "$1"
+# }
 
 
 # Define a preview command that works correctly
-preview_cmd="\
-if [ -d {} ]; then \
-  eza --tree --color=always {} | head -200; \
-elif [[ {} =~ \.(md|txt|py|java|tex|sh|c|cpp|log)$ ]]; then \
-  bat -n --color=always --line-range :500 {}; \
-else \
-  echo 'No preview available for this file type.'; \
-fi"
+# preview_cmd="\
+# if [ -d {} ]; then \
+#   eza --tree --color=always {} | head -200; \
+# elif [[ {} =~ \.(md|txt|py|java|tex|sh|c|cpp|log)$ ]]; then \
+#   bat -n --color=always --line-range :500 {}; \
+# else \
+#   echo 'No preview available for this file type.'; \
+# fi"
 
-# Ensure correct quoting and escaping for the preview option
-export FZF_CTRL_T_OPTS="--preview=\"$preview_cmd\" --preview-window=right:60%:wrap"
-export FZF_ALT_C_OPTS="--preview=\"eza --tree --color=always {} | head -200\" --preview-window=right:60%:wrap"
+# # Ensure correct quoting and escaping for the preview option
+# export FZF_CTRL_T_OPTS="--preview=\"$preview_cmd\" --preview-window=right:60%:wrap"
+# export FZF_ALT_C_OPTS="--preview=\"eza --tree --color=always {} | head -200\" --preview-window=right:60%:wrap"
 
 # Advanced customization of fzf options via _fzf_comprun function
-_fzf_comprun() {
-  local command=$1
-  shift
+# _fzf_comprun() {
+#   local command=$1
+#   shift
 
-  case "$command" in
-    cd)           fzf --preview="eza --tree --color=always {} | head -200" --preview-window=right:60%:wrap "$@" ;;
-    export|unset) fzf --preview="eval 'echo ${}'" --preview-window=wrap "$@" ;;
-    ssh)          fzf --preview="dig {}" --preview-window=wrap "$@" ;;
-    *)            fzf --preview="$preview_cmd" --preview-window=right:60%:wrap "$@" ;;
-  esac
-}
+#   case "$command" in
+#     cd)           fzf --preview="eza --tree --color=always {} | head -200" --preview-window=right:60%:wrap "$@" ;;
+#     export|unset) fzf --preview="eval 'echo ${}'" --preview-window=wrap "$@" ;;
+#     ssh)          fzf --preview="dig {}" --preview-window=wrap "$@" ;;
+#     *)            fzf --preview="$preview_cmd" --preview-window=right:60%:wrap "$@" ;;
+#   esac
+# }
 
 
 
@@ -550,4 +562,7 @@ BaixarVideo() {
 
 
 export FZF_DEFAULT_OPTS="--layout=reverse --height=40% --preview-window=wrap"
+
+
+alias cd='z'
 
